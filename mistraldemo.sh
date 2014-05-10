@@ -13,10 +13,10 @@ cp /vagrant/local.conf /opt/devstack/
 cp /opt/mistral/contrib/devstack/lib/* /opt/devstack/lib/
 cp /opt/mistral/contrib/devstack/extras.d/* /opt/devstack/extras.d/
 
-chown -R vagrant:vagrant /opt/
-
 cd /opt/devstack
 sudo cp /vagrant/stackrc /opt/devstack/
+chown -R vagrant:vagrant /opt/
+
 su vagrant - -c "./stack.sh"
 
 cd /opt/python-mistralclient
@@ -35,6 +35,9 @@ keystone service-create --name mistral --type workflow
 
 keystone user-role-add --user=mistral --tenant=admin --role=admin
 keystone user-role-add --user=mistral --tenant=demo --role=admin
+
+nova flavor-create m1.micro 101 128 0 1
+nova flavor-create m1.nano 102 64 0 1
 
 cd /opt/python-mistralclient/horizon_dashboard
 sudo pip install -r requirements.txt
