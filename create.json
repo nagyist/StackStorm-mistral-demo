@@ -1,6 +1,6 @@
    {
      "server_name": "mistral-vm",
      "nova_url": "http://172.16.80.100:8774/v2",
-     "image_id": "72891f9f-ab1f-49b6-9f97-4efb2643dd6b",
+     "image_id": "e1d0a3b3-5acb-42fd-ada0-a6b5fe06de49",
      "flavor_id": "1"
    }

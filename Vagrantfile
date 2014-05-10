@@ -15,7 +15,7 @@ Vagrant.configure("2") do |config|
     box.vm.network :forwarded_port, guest: 8000, host: 8000
     box.vm.provision :shell, :path => "mistraldemo.sh"
 	  box.vm.provider :virtualbox do |vbox|
-      vbox.customize ["modifyvm", :id, "--memory", 6144]
+      vbox.customize ["modifyvm", :id, "--memory", 3072]
       vbox.customize ["modifyvm", :id, "--cpus", 2]
     end
   end

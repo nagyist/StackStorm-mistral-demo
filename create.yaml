@@ -28,7 +28,7 @@ Namespaces:
 
 Workflow:
   tasks:
-    create-vm:
+    createVM:
       action: Nova.create-vm
       parameters:
         server_name: $.server_name

@@ -38,8 +38,7 @@ Namespaces:
           headers:
             X-Auth-Token: $.auth_token
         output:
-          info:  "$.content.server.status"
-          vm_ip: "$.content.server.addresses.private.where($.'OS-EXT-IPS:type' = 'fixed')[0].addr"
+          vm_ip: "$.content.server.addresses.private.where($.'OS-EXT-IPS:type' = 'floating')[0].addr"
 
       addFloatingIP:
         base-parameters:
@@ -97,14 +96,29 @@ Workflow:
       on-success: waitForIP
       on-error: sendCreateVMError
 
-    # Wait till the VM is assigned with IP address (request to Nova).
+    # # Wait till the VM is assigned with IP address (request to Nova).
+    # waitForIP:
+    #   action: Nova.getIP
+    #   retry:
+    #     count: 3
+    #     delay: 10
+    #   publish:
+    #     vm_ip: vm_ip
+    #   parameters:
+    #     nova_url: $.nova_url
+    #     project_id: $.project_id
+    #     auth_token: $.auth_token
+    #     vm_id: $.vm_id
+    #   on-success: waitSSH
+    #   on-error: sendCreateVMError
+
+          # Wait till the VM is assigned with IP address (request to Nova).
     waitForIP:
-      action: Nova.getIP
+      action: Nova.addFloatingIP
       retry:
         count: 3
         delay: 10
       publish:
-        status: status
         vm_ip: vm_ip
       parameters:
         nova_url: $.nova_url
@@ -118,7 +132,7 @@ Workflow:
     waitSSH:
       action: Ssh.waitSSH
       retry:
-        count: 5
+        count: 2
         delay: 10
       parameters:
         username: $.ssh_username
@@ -133,7 +147,7 @@ Workflow:
       parameters:
         params:
           to: [$.admin_email]
-          subject: Workflow successfully completed
+          subject: Workflow result
           body: |
             Workflow result of execution {$.__execution.id} is {$.result}
 
@@ -145,30 +159,30 @@ Workflow:
       on-finish: deleteVM
 
       # In case of createVM error send e-mail with error message.
-    sendCreateVMError:
-      action: std.email
-      parameters:
-        params:
-          to: [$.admin_email]
-          subject: Workflow error
-          body: |
-            Failed to create a VM in execution {$.__execution.id}
+      sendCreateVMError:
+        action: std.email
+        parameters:
+          params:
+            to: [$.admin_email]
+            subject: Workflow error
+            body: |
+              Failed to create a VM in execution {$.__execution.id}
 
-            -- Sorry. Mistral Team.
-        settings:
-          smtp_server: $.smtp_server
-          from: $.from_email
-          password: $.smtp_password
-      on-finish: deleteVM
+              -- Thanks, Mistral Team.
+          settings:
+            smtp_server: $.smtp_server
+            from: $.from_email
+            password: $.smtp_password
+        #on-finish: deleteVM
 
-    # Destroy the VM (request to Nova).
-    deleteVM:
-      action: Nova.deleteVM
-      parameters:
-        nova_url: $.nova_url
-        project_id: $.project_id
-        auth_token: $.auth_token
-        vm_id: $.vm_id
+      # Destroy the VM (request to Nova).
+      deleteVM:
+        action: Nova.deleteVM
+        parameters:
+          nova_url: $.nova_url
+          project_id: $.project_id
+          auth_token: $.auth_token
+          vm_id: $.vm_id
 
 #triggers:
 #  runJob:
