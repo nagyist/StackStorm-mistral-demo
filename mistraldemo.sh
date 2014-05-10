@@ -33,6 +33,9 @@ keystone service-create --name mistral --type workflow
 #keystone endpoint-create --service_id mistral --publicurl $MISTRAL_URL \
 #				  --adminurl $MISTRAL_URL --internalurl $MISTRAL_URL
 
+keystone user-role-add --user=mistral --tenant=admin --role=admin
+keystone user-role-add --user=mistral --tenant=demo --role=admin
+
 cd /opt/python-mistralclient/horizon_dashboard
 sudo pip install -r requirements.txt
 sudo cp /vagrant/local_settings.py /opt/python-mistralclient/horizon_dashboard/demo_dashboard/local/
