@@ -1,0 +1,192 @@
+# This example requires the following properties provided in execution context:
+# - nova_url  ## url to Nova service, e.g. http://0.0.0.0:8774/v3
+# - server_name ## Name you want to give to new instance
+# - image_id  ## image id from Glance service
+# - flavor_id ## flavor id - type of instance hardware
+# - ssh_username ## username of your VM
+# - ssh_password ## password to your VM
+# - admin_email ## email address to send notifications to
+# - from_email ## email address to send notifications from
+# - smtp_server ## SMTP server to use for sending emails (e.g. smtp.gmail.com:587)
+# - smtp_password ## password to connect to SMTP server
+
+
+Namespaces:
+  Nova:
+    # Nova actions for creating VM, retrieving IP and VM deleting.
+    class: std.http
+    actions:
+      createVM:
+        base-parameters:
+          url: '{$.nova_url}/{$.project_id}/servers'
+          method: POST
+          headers:
+            X-Auth-Token: $.auth_token
+            Content-Type: application/json
+          body:
+            server:
+              name: $.server_name
+              imageRef: $.image_id
+              flavorRef: $.flavor_id
+        output:
+          vm_id: $.content.server.id
+
+      getIP:
+        base-parameters:
+          url: '{$.nova_url}/{$.project_id}/servers/{$.vm_id}'
+          method: GET
+          headers:
+            X-Auth-Token: $.auth_token
+        output:
+          vm_ip: "$.content.server.addresses.private.where($.'OS-EXT-IPS:type' = 'floating')[0].addr"
+
+      addFloatingIP:
+        base-parameters:
+          url: '{$.nova_url}/{$.project_id}/servers/{$.vm_id}/action'
+          method: POST
+          headers:
+            X-Auth-Token: $.auth_token
+            Content-Type: 'application/json'
+          body:
+            addFloatingIp:
+              address: 172.16.80.230
+        output:
+          vm_ip: 172.16.80.230
+
+      deleteVM:
+        base-parameters:
+          url: '{$.nova_url}/{$.project_id}/servers/{$.vm_id}'
+          method: DELETE
+          headers:
+            X-Auth-Token: $.auth_token
+        output:
+          status: $.status
+
+  Ssh:
+    class: std.ssh
+    base-parameters:
+      host: $.vm_ip
+      username: $.username
+      password: $.password
+    actions:
+      # Simple SSH command.
+      waitSSH:
+        base-parameters:
+          cmd: 'uname -a'
+
+      # SSH command to run the server.
+      runServer:
+        base-parameters:
+          cmd: 'nohup python ~/web_app.py > web_app.log &'
+
+Workflow:
+  tasks:
+    # Create a VM (request to Nova).
+    createVM:
+      action: Nova.createVM
+      parameters:
+        server_name: $.server_name
+        image_id: $.image_id
+        flavor_id: $.flavor_id
+        nova_url: $.nova_url
+        project_id: $.project_id
+        auth_token: $.auth_token
+      publish:
+        vm_id: vm_id
+      on-success: waitForIP
+      on-error: sendCreateVMError
+
+    # # Wait till the VM is assigned with IP address (request to Nova).
+    # waitForIP:
+    #   action: Nova.getIP
+    #   retry:
+    #     count: 3
+    #     delay: 10
+    #   publish:
+    #     vm_ip: vm_ip
+    #   parameters:
+    #     nova_url: $.nova_url
+    #     project_id: $.project_id
+    #     auth_token: $.auth_token
+    #     vm_id: $.vm_id
+    #   on-success: waitSSH
+    #   on-error: sendCreateVMError
+
+          # Wait till the VM is assigned with IP address (request to Nova).
+    waitForIP:
+      action: Nova.addFloatingIP
+      retry:
+        count: 6
+        delay: 10
+      publish:
+        vm_ip: vm_ip
+      parameters:
+        nova_url: $.nova_url
+        project_id: $.project_id
+        auth_token: $.auth_token
+        vm_id: $.vm_id
+      on-success: waitSSH
+      on-error: sendCreateVMError
+
+    # Reach out and ssh to the machine
+    waitSSH:
+      action: Ssh.waitSSH
+      retry:
+        count: 2
+        delay: 2
+      parameters:
+        username: $.ssh_username
+        password: $.ssh_password
+        vm_ip: $.vm_ip
+      on-success: sendResultEmail
+      on-error: sendCreateVMError
+
+    # In case of createVM error send e-mail with error message.
+    sendResultEmail:
+      action: std.email
+      parameters:
+        params:
+          to: [$.admin_email]
+          subject: Workflow result
+          body: |
+            Workflow result of execution {$.__execution.id} is {$.result}
+
+            -- Thanks, Mistral Team.
+        settings:
+          smtp_server: $.smtp_server
+          from: $.from_email
+          password: $.smtp_password
+      on-finish: deleteVM
+
+    # In case of createVM error send e-mail with error message.
+    sendCreateVMError:
+      action: std.email
+      parameters:
+        params:
+          to: [$.admin_email]
+          subject: Workflow error
+          body: |
+            Failed to create a VM in execution {$.__execution.id}
+
+            -- Thanks, Mistral Team.
+        settings:
+          smtp_server: $.smtp_server
+          from: $.from_email
+          password: $.smtp_password
+      on-finish: deleteVM
+
+    # Destroy the VM (request to Nova).
+    deleteVM:
+      action: Nova.deleteVM
+      parameters:
+        nova_url: $.nova_url
+        project_id: $.project_id
+        auth_token: $.auth_token
+        vm_id: $.vm_id
+
+#triggers:
+#  runJob:
+#    type: periodic
+#    tasks: runJob
+#    parameters:
+#      cron-pattern: "*/1 * * * *"

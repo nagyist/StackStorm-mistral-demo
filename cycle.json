@@ -1,0 +1,12 @@
+   {
+     "server_name": "my-vm",
+     "nova_url": "http://172.16.80.100:8774/v2",
+     "image_id": "72891f9f-ab1f-49b6-9f97-4efb2643dd6b",
+     "flavor_id": "42",
+     "ssh_username": "cirros",
+     "ssh_password": "cubswin:)",
+     "smtp_server": "smtp.gmail.com:587",
+     "from_email": "your.email@stackstorm.com",
+     "smtp_password": "secret",
+     "admin_email": "your.email@gmail.com"
+   }
