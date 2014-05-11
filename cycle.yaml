@@ -74,11 +74,8 @@ Namespaces:
       waitSSH:
         base-parameters:
           cmd: 'uname -a'
-
-      # SSH command to run the server.
-      runServer:
-        base-parameters:
-          cmd: 'nohup python ~/web_app.py > web_app.log &'
+      output:
+        cmd_out: $.
 
 Workflow:
   tasks:
@@ -104,7 +101,7 @@ Workflow:
         count: 3
         delay: 10
       publish:
-        status: status
+        info: info
         vm_ip: vm_ip
       parameters:
         nova_url: $.nova_url
@@ -124,6 +121,8 @@ Workflow:
         username: $.ssh_username
         password: $.ssh_password
         vm_ip: $.vm_ip
+      publish:
+        result: cmd_out
       on-success: sendResultEmail
       on-error: sendCreateVMError
 
