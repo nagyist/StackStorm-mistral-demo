@@ -17,7 +17,7 @@ Vagrant.configure("2") do |config|
 	  box.vm.provider :virtualbox do |vbox|
       vbox.customize ["modifyvm", :id, "--memory", 3072]
       vbox.customize ["modifyvm", :id, "--cpus", 2]
+      vbox.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
     end
   end
 end
-
